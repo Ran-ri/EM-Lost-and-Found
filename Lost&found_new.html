@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const supabase = supabase.createClient(
+        "https://vjkswzxjfkcoatsrpiin.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqa3N3enhqZmtjb2F0c3JwaWluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MzQ2MTUsImV4cCI6MjA3OTIxMDYxNX0.F2bTu2N9jLNu7b88hApSGpYUJI-wHF1ABKvU2ooh8Xo"
+        );
+    </script>
+<meta charset="UTF-8" />
+<title>Lost & Found Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Funnel+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+<style>
+    body {
+        background-color: rgb(241, 226, 203);
+        padding: 40px;
+        font-family: sans-serif;
+    }
+    h1 {
+        text-align: center;
+        font-family: 'Funnel Sans', sans-serif;
+        font-size: 3em;
+        margin-bottom: 30px;
+    }
+    .board {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 40px;
+        justify-content: center;
+    }
+    .polaroid {
+        width: 240px;
+        background: #fffdf7;
+        padding: 10px 10px 20px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+        border-radius: 6px;
+        position: relative;
+        transform: rotate(-3deg);
+        transition: 0.1s ease;
+    }
+
+    .postits{
+        width: 240px;
+        height: 200px;
+        padding: 10px 10px 20px;
+        position: relative;
+        transform: rotate(-3deg);
+        transition: 0.1s ease;
+    }
+    
+    .postits:nth-child(1n) { background: #ff7eb9; } /* pastel yellow */
+    .postits:nth-child(2n) { background: #ff65a3; } /* lilac */
+    .postits:nth-child(3n) { background: #7afcff; } /* peach */
+    .postits:nth-child(4n) { background: #feff9c; } /* pale sky */
+    .postits:nth-child(5n) { background: #fff740; }
+    
+    .polaroid img {
+        width: 100%;
+        border-radius: 4px;
+    }
+    .polaroid:hover, .postits:hover {
+        transform: scale(1.03);
+    }
+    .title { font-size: 1.4em; margin-top: 8px; text-align:center; }
+    .desc { font-size: 0.9em; margin-top: 4px; text-align:center; }
+    .post-btn{
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        font-family: sans-serif;
+        text-align: center;
+        font-size: 20px;
+        font-weight: 600;
+        padding: 5px 15px;
+        background-color: rgb(244, 244, 244);
+        border-radius: 15px;
+        box-shadow: 0;
+        border: rgb(235, 235, 235);
+        cursor: pointer;
+    }
+    .post-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 ;
+    }
+
+    .post-btn:active {
+    transform: scale(0.98);
+    }
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.4);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 999;
+    }
+    .modal-content {
+        background: #fff9ee;
+        padding: 25px;
+        width: 350px;
+        border-radius: 12px;
+        box-shadow: 0 0 25px rgba(0,0,0,0.3);
+        animation: pop 0.2s ease;
+    }
+    @keyframes pop {
+        from { transform: scale(0.8); opacity: 0; }
+        to   { transform: scale(1); opacity: 1; }
+    }
+    .modal-content form { display: flex; flex-direction: column; gap: 10px; }
+    input, textarea { padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+    .submit-btn { padding: 10px; background: #ffd86b; border-radius: 8px; cursor: pointer; }
+</style>
+
+</head>
+
+
+<body>
+<h1>Lost & Found Board</h1>
+<button class="post-btn" id="openModal">Post</button>
+<div class="board" id="board"></div>
+
+<!-- Modal -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <span id="closeModal" style="float:right; cursor:pointer; font-size:1.5em;">×</span>
+    <h2>Create a Post</h2>
+    <form id="postForm">
+      <label>Title</label>
+      <input id="titleInput" required>
+      <label>Description</label>
+      <textarea id="descInput" required></textarea>
+      <label>Image URL (optional)</label>
+      <input id="imgInput" placeholder="https://example.com/img.jpg">
+      <button class="submit-btn">Submit</button>
+    </form>
+  </div>
+</div>
+
+<script>
+form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const title = document.getElementById("titleInput").value;
+    const description = document.getElementById("descInput").value;
+    const image_url = document.getElementById("imgInput").value;
+
+    // Save to Supabase
+    const { data, error } = await supabase
+        .from("posts")
+        .insert([{ title, description, image_url }]);
+
+    if (error) {
+        alert("Error saving post: " + error.message);
+        return;
+    }
+
+    addCardToBoard(title, description, image_url); // UI update
+    form.reset();
+    modal.style.display = "none";
+});
+async function loadPosts() {
+    const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .order("id", { ascending: false });
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    data.forEach(post => {
+        addCardToBoard(post.title, post.description, post.image_url);
+    });
+}
+
+loadPosts();
+
+function addCardToBoard(title, desc, img) {
+    const card = document.createElement("div");
+    card.className = img ? "polaroid" : "postits";
+
+    if (img) {
+        const i = document.createElement("img");
+        i.src = img;
+        card.appendChild(i);
+    }
+
+    const t = document.createElement("div");
+    t.className = "title";
+    t.textContent = title;
+
+    const d = document.createElement("div");
+    d.className = "desc";
+    d.textContent = desc;
+
+    card.appendChild(t);
+    card.appendChild(d);
+    board.appendChild(card);
+}
+</script>
+</body>
+</html>
