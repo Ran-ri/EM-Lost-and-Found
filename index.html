@@ -3,7 +3,7 @@
 <head>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        const supabase = supabase.createClient(
+        const client = supabase.createClient(
         "https://vjkswzxjfkcoatsrpiin.supabase.co",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqa3N3enhqZmtjb2F0c3JwaWluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MzQ2MTUsImV4cCI6MjA3OTIxMDYxNX0.F2bTu2N9jLNu7b88hApSGpYUJI-wHF1ABKvU2ooh8Xo"
         );
@@ -141,70 +141,30 @@
 </div>
 
 <script>
-    const modal = document.getElementById("modal");
-    const openModal = document.getElementById("openModal");
-    const closeModal = document.getElementById("closeModal");
-    const form = document.getElementById("postForm");
-    const board = document.getElementById("board");
+// ------------------------------
+// Modal + UI Setup
+// ------------------------------
+const modal = document.getElementById("modal");
+const openModal = document.getElementById("openModal");
+const closeModal = document.getElementById("closeModal");
+const form = document.getElementById("postForm");
+const board = document.getElementById("board");
 
-    // open modal
-    openModal.onclick = () => modal.style.display = "flex";
+openModal.onclick = () => modal.style.display = "flex";
+closeModal.onclick = () => modal.style.display = "none";
+window.onclick = e => { if (e.target === modal) modal.style.display = "none"; };
 
-    // close modal
-    closeModal.onclick = () => modal.style.display = "none";
-
-    // close when clicking background
-    window.onclick = e => {
-    if (e.target === modal) modal.style.display = "none";
-    };
-
-    form.addEventListener("submit", async e => {
-    e.preventDefault();
-
-    const title = document.getElementById("titleInput").value;
-    const description = document.getElementById("descInput").value;
-    const image_url = document.getElementById("imgInput").value;
-
-    // Save to Supabase
-    const { data, error } = await supabase
-        .from("posts")
-        .insert([{ title, description, image_url }]);
-
-    if (error) {
-        alert("Error saving post: " + error.message);
-        return;
-    }
-
-    addCardToBoard(title, description, image_url); // UI update
-    form.reset();
-    modal.style.display = "none";
-});
-async function loadPosts() {
-    const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .order("id", { ascending: false });
-
-    if (error) {
-        console.error(error);
-        return;
-    }
-
-    data.forEach(post => {
-        addCardToBoard(post.title, post.description, post.image_url);
-    });
-}
-
-loadPosts();
-
+// ------------------------------
+// Add card UI Function
+// ------------------------------
 function addCardToBoard(title, desc, img) {
     const card = document.createElement("div");
     card.className = img ? "polaroid" : "postits";
 
     if (img) {
-        const i = document.createElement("img");
-        i.src = img;
-        card.appendChild(i);
+        const image = document.createElement("img");
+        image.src = img;
+        card.appendChild(image);
     }
 
     const t = document.createElement("div");
@@ -219,6 +179,53 @@ function addCardToBoard(title, desc, img) {
     card.appendChild(d);
     board.appendChild(card);
 }
+
+// ------------------------------
+// Load Posts from Supabase
+// ------------------------------
+async function loadPosts() {
+    const { data, error } = await client
+        .from("posts")
+        .select("*")
+        .order("id", { ascending: false });
+
+    if (error) {
+        console.error("Load error:", error);
+        return;
+    }
+
+    data.forEach(post => {
+        addCardToBoard(post.title, post.description, post.image_url);
+    });
+}
+loadPosts();
+
+// ------------------------------
+// Submit Handler
+// ------------------------------
+form.addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const title = document.getElementById("titleInput").value;
+    const description = document.getElementById("descInput").value;
+    const image_url = document.getElementById("imgInput").value.trim() || null;
+
+    const { data, error } = await client
+        .from("posts")
+        .insert([{ title, description, image_url }]);
+
+    if (error) {
+        alert("Error saving post:\n" + error.message);
+        return;
+    }
+
+    // Add visually
+    addCardToBoard(title, description, image_url);
+
+    form.reset();
+    modal.style.display = "none";
+});
 </script>
+    
 </body>
 </html>
